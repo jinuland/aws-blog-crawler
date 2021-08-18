@@ -3,44 +3,21 @@ from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch
 from datetime import datetime
 import time
-
+import yaml 
 
 seedURL = 'https://aws.amazon.com/ko/blogs/korea'
 
+with open('./conf.yaml', 'r') as f: 
+    config = yaml.load(f)
 
-es = Elasticsearch( ['https://search-amazon-es-workshop-k7qngzh4pj5pggc3nefrqfqlhe.ap-northeast-2.es.amazonaws.com/', 'otherhost'],
-    http_auth=('admin', 'adminPassW0rd!'),
+es = Elasticsearch( [config['amazon_es_host']],
+    http_auth=(config['user_id'], config['password']),
     scheme="https",
     port=443
 )
 
 
-def enBlogParser(url) : 
-  response = requests.get(url)
-  soup = BeautifulSoup(response.text, 'html.parser')
-  articles = soup.find_all('article')
-  for article in articles:
-
-    title = article.find('h2').get_text()
-    print('title is : ' +  title)
-
-    author = article.find('footer').find('span', {"property" : "author"}).get_text()
-    print('author : ' + author)
-    postingTime = article.find('footer').find('time').get_text()
-    print('time : ' + postingTime)
-  
-    category_spans = article.find('footer').find('span', {"class", "blog-post-categories"}).find_all('a')
-    print(len(category_spans))
-    categoryList = map(lambda x : "'" + x.find('span').get_text() + "'", category_spans)
-    category = ','.join(categoryList)
-    print('category : ' + category)
-
-    body = article.find('section').get_text()
-    print('body : ' + body) 
-
-
-
-def koBlogParser(url): 
+def parse(url): 
   response = requests.get(url)
   soup = BeautifulSoup(response.text, 'html.parser')
   articles = soup.find_all('article')
@@ -95,7 +72,7 @@ pageMax = 100
 
 for pageNum in range(1,pageMax): 
   if pageNum < 2 :  
-    koBlogParser(seedURL)
+    parse(seedURL)
   else : 
-    koBlogParser(seedURL + '/page/' + str(pageNum))
+    parse(seedURL + '/page/' + str(pageNum))
   time.sleep(10)
