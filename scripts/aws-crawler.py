@@ -4,6 +4,8 @@ from elasticsearch import Elasticsearch
 from datetime import datetime
 import time
 import yaml 
+import argparse
+import json
 
 seedURL = 'https://aws.amazon.com/blogs/aws'
 
@@ -16,8 +18,12 @@ es = Elasticsearch( [config['amazon_es_host']],
     port=443
 )
 
+indexName = config['index']
+file = config['archive_file_name']
 
-def parse(url) : 
+f = open(file, 'w')
+
+def parse(url, doArchive) : 
   print('try fetch : ' + url)
   response = requests.get(url)
   soup = BeautifulSoup(response.text, 'html.parser')
@@ -36,11 +42,16 @@ def parse(url) :
     isoPostingTime = datetime.strptime(postingTime, '%d %b %Y').isoformat()
     print('time : ' + isoPostingTime)
   
-    category_spans = article.find('footer').find('span', {"class", "blog-post-categories"}).find_all('a')
-    print(len(category_spans))
-    categoryList = map(lambda x : "'" + x.find('span').get_text() + "'", category_spans)
-    category = ','.join(categoryList)
-    print('category : ' + category)
+    category = ''
+    categoryList = []
+    try : 
+      category_spans = article.find('footer').find('span', {"class", "blog-post-categories"}).find_all('a')
+      print(len(category_spans))
+      categoryList = map(lambda x : "'" + x.find('span').get_text() + "'", category_spans)
+      category = ','.join(categoryList)
+      print('category : ' + category)
+    except(AttributeError) as e : 
+      pass
 
     body = article.find('section').get_text()
     print('body : ' + body) 
@@ -55,17 +66,33 @@ def parse(url) :
         # TODO: write code...
     }
     
+    index = {
+      "index" : {
+        "_index" : indexName,
+        "_id" : doc['title']
+      }
+    }
+    
     print(doc)
 
-    res = es.index(index='aws-blog', body=doc, id=title)
-    print(res)
+    if doArchive : 
+      f.write(json.dumps(index) + "\n")
+      f.write(json.dumps(doc) + "\n")
+    else : 
+      res = es.index(index='aws-blog', body=doc, id=title)
+      print(res)
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--archive", help="archive blog data to file", action="store_true")
+args = parser.parse_args()
 
-pageMax = 100
+pageMax = 200
 
 for pageNum in range(1,pageMax): 
   if pageNum < 2 :  
-    parse(seedURL)
+    parse(seedURL, args.archive)
   else : 
-    parse(seedURL + '/page/' + str(pageNum))
-  time.sleep(10)
+    parse(seedURL + '/page/' + str(pageNum), args.archive)
+  time.sleep(0.1)
+
+f.close()

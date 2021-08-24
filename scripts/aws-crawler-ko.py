@@ -4,6 +4,8 @@ from elasticsearch import Elasticsearch
 from datetime import datetime
 import time
 import yaml 
+import argparse
+import json
 
 seedURL = 'https://aws.amazon.com/ko/blogs/korea'
 
@@ -16,8 +18,13 @@ es = Elasticsearch( [config['amazon_es_host']],
     port=443
 )
 
+indexName = config['index']
+file = config['archive_file_name_ko']
 
-def parse(url): 
+f = open(file, 'w')
+
+
+def parse(url, doArchive): 
   response = requests.get(url)
   soup = BeautifulSoup(response.text, 'html.parser')
   articles = soup.find_all('article')
@@ -62,17 +69,34 @@ def parse(url):
         # TODO: write code...
     }
     
+    index = {
+      "index" : {
+        "_index" : indexName,
+        "_id" : doc['title']
+      }
+    }
+    
     print(doc)
 
-    res = es.index(index='aws-blog', body=doc, id=title)
-    print(res)
+    if doArchive : 
+      f.write(json.dumps(index) + "\n")
+      f.write(json.dumps(doc) + "\n")
+    else : 
+      res = es.index(index='aws-blog', body=doc, id=title)
+      print(res)
 
 
-pageMax = 100
+parser = argparse.ArgumentParser()
+parser.add_argument("--archive", help="archive blog data to file", action="store_true")
+args = parser.parse_args()
+
+pageMax = 200
 
 for pageNum in range(1,pageMax): 
   if pageNum < 2 :  
-    parse(seedURL)
+    parse(seedURL, args.archive)
   else : 
-    parse(seedURL + '/page/' + str(pageNum))
-  time.sleep(10)
+    parse(seedURL + '/page/' + str(pageNum), args.archive)
+  time.sleep(0.1)
+  
+f.close()
