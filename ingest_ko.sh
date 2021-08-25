@@ -21,4 +21,6 @@ eval $(parse_yaml /home/ec2-user/environment/aws-blog-crawler/conf.yaml)
 
 gunzip -f $archive_file_name_ko.gz
 
+amazon_es_host=$(echo $amazon_es_host | sed -e 's/\/$//')
+echo curl -u $user_id:$password -s -H "Content-Type: application/x-ndjson" -XPOST $amazon_es_host:443/_bulk --data-binary "@$archive_file_name_ko"; echo
 curl -u $user_id:$password -s -H "Content-Type: application/x-ndjson" -XPOST $amazon_es_host:443/_bulk --data-binary "@$archive_file_name_ko"; echo
