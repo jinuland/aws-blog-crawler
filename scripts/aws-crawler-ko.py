@@ -6,6 +6,7 @@ import time
 import yaml 
 import argparse
 import json
+import dateutil.parser
 
 seedURL = 'https://aws.amazon.com/ko/blogs/korea'
 
@@ -38,8 +39,8 @@ def parse(url, doArchive):
 
     author = article.find('footer').find('span', {"property" : "author"}).get_text()
     print('author : ' + author)
-    postingTime = article.find('footer').find('time').get_text()
-    isoPostingTime = datetime.strptime(postingTime, '%d %b %Y').isoformat()
+    
+    isoPostingTime = article.find('footer').find('time')['datetime']
     print('time : ' + isoPostingTime)
   
     category = ''
